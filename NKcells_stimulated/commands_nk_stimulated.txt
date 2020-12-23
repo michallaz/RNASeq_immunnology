@@ -1,0 +1,33 @@
+###This file contains commands used in the analysis of public RNAseq data of NK cells stimulated with IL-2 or IL-15
+
+
+1) To run quality check, use FastQC:
+
+cd <RAD_DATA_DIR>
+./<FASTQC_DIR>/fastqc -o <OUTPUT_DIR> -t 10 *fastq.gz
+
+
+
+3) To map reads on the reference genome, use STAR:
+
+a) first generate genome indices as described in STAR manual
+
+./<STAR_DIR>/STAR --runThreadN 10 --runMode genomeGenerate --genomeDir <REFERENCE_GENOME_INDICES_DIR> --genomeFastaFiles <REFERENCE_GENOME_DIR>/<REFERENCE_GENOME>.fasta --sjdbGTFfile <GTF_ANNOTATION_FILE> --sjdbOverhang ReadLength-1
+
+
+b) then run mapping:
+
+./<STAR_DIR>/STAR --runThreadN 10 --genomeDir <REFERENCE_GENOME_INDICES_DIR> --readFilesIn <FORWARD>.fastq <REVERSE>.fastq  --outFileNamePrefix <OUTPUT_FILE_PREFIX> --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --twopassMode Basic --twopass1readsN -1
+
+
+4) To filter mapped reads, use Samtools:
+
+./<SAMTOOLS_DIR>/samtools view -q 255 <INPUT_BAM_FILE> > <OUTPUT_BAM_UNIQUE> 
+awk '($2=="99" || $2=="147" || $2=="83" || $2=="163")' <INPUT_BAM_UNIQUE>  > <OUTPUT_BAM_UNIQUE_CORRECT>
+./<SAMTOOLS_DIR>/samtools view -b -H <INPUT_BAM_UNIQUE> > <FINAL_BAM> 
+cat <INPUT_BAM_UNIQUE_CORRECT> >> <FINAL_BAM>
+
+
+5) To calculate read counts, use HTSeq:
+
+python3 -m HTSeq.scripts.count -f bam -t exon --additional-attr "gene_name" -m union --nonunique none --stranded=no <FINAL_BAM> <GTF_ANNOTATION_FILE> > <FINAL_BAM>.HtseqCounts.txt

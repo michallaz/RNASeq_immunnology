@@ -1,0 +1,39 @@
+###This file contains commands used in the analysis
+
+
+1) To run quality check, use FastQC:
+
+cd <RAD_DATA_DIR>
+./<FASTQC_DIR>/fastqc -o <OUTPUT_DIR> -t 10 *fastq.gz
+
+
+2) To trimm raw reads, use Sickle:
+
+./<SICKLE_DIR>sickle pe -q 30 -l 40 -g -f <FORWARD_INPUT>.fastq.gz -r <REVERSE_INPUT>.fastq.gz -t sanger -o <OUTPUT_FORWARD_TRIMMED>.fastq.gz -p <OUTPUT_REVERSE_TRIMMED>.fastq.gz -s <OUTPUT_TRIMMED_SINGLE>.fastq.gz
+
+
+3) To map trimmed reads on the reference genome, use STAR:
+
+a) first generate genome indices as described in STAR manual
+
+./<STAR_DIR>/STAR --runThreadN 10 --runMode genomeGenerate --genomeDir <REFERENCE_GENOME_INDICES_DIR> --genomeFastaFiles <REFERENCE_GENOME_DIR>/<REFERENCE_GENOME>.fasta --sjdbGTFfile <GTF_ANNOTATION_FILE> --sjdbOverhang ReadLength-1
+
+
+b) then run mapping:
+
+./<STAR_DIR>/STAR --runThreadN 10 --genomeDir <REFERENCE_GENOME_INDICES_DIR> --readFilesIn <FORWARD_TRIMMED>.fastq <REVERSE_TRIMMED>.fastq  --outFileNamePrefix <OUTPUT_FILE_PREFIX> --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard
+
+
+4) To sort and filter mapped reads, use Samtools:
+
+./<SAMTOOLS_DIR>samtools sort -@ 10 -n -o <OUTPUT_SORTED_BAM> -O bam <INPUT_BAM_FILE>
+./<SAMTOOLS_DIR>samtools view <INPUT_SORTED_BAM> | awk '($2=="99" || $2=="147" || $2=="83" || $2=="163")' | awk '($5=="255")' >> <OUTPUT_BAM>
+
+
+5) To calculate read counts, use featureCounts:
+
+./<SUBREAD_DIR>/bin/featureCounts -T 20 -a <GTF_ANNOTATION_FILE> -o <OUTPUT_COUNTS>.txt -C -p -B -g gene_id --ignoreDup -Q 30 -t exon *.<SORTED_FILTERED>.bam 2> <OUTPUT_COUNTS>.out
+
+
+
+ 
